@@ -42,34 +42,50 @@ if st.button("🔍 Rodar Radar"):
     # =========================
     # SINAIS EM CARDS
     # =========================
-    st.subheader("📊 Oportunidades")
+    # =========================
+# RANKING AUTOMÁTICO
+# =========================
+df = df.sort_values(by="Score", ascending=False)
 
-    cols = st.columns(len(df))
+st.subheader("🏆 Ranking de Oportunidades")
 
-    for i, col in enumerate(cols):
-        row = df.iloc[i]
+# =========================
+# CARDS COM CORES
+# =========================
+for i in range(len(df)):
 
-        with col:
-            st.markdown(f"""
-### {row['Ativo']}
+    row = df.iloc[i]
 
-**Sinal:** {row['Sinal']}  
-**Score:** {row['Score']}
+    color = "#00C853" if row["Sinal"] == "COMPRA" else "#D50000"
 
-Entrada: `{row['Entrada']}`  
-SL: `{row['SL']}`  
-TP1: `{row['TP1']}`  
-TP2: `{row['TP2']}`
+    st.markdown(f"""
+<div style="
+padding:15px;
+margin-bottom:10px;
+border-radius:10px;
+background-color:#111;
+border-left:5px solid {color};
+">
 
----
-**1D:** {row['1D']}  
-**4H:** {row['4H']}  
-**15M:** {row['15M']}  
-**1M:** {row['1M']}
-""")
+<h3>{row['Ativo']} | {row['Sinal']}</h3>
 
-    st.divider()
+<b>Score:</b> {row['Score']} <br>
+<b>Entrada:</b> {row['Entrada']} | 
+<b>SL:</b> {row['SL']} | 
+<b>TP:</b> {row['TP2']} <br><br>
 
+<b>1D:</b> {row['1D']}<br>
+<b>4H:</b> {row['4H']}<br>
+<b>15M:</b> {row['15M']}<br>
+<b>1M:</b> {row['1M']}
+
+</div>
+""", unsafe_allow_html=True)
+
+# destaque TOP 1
+top = df.iloc[0]
+
+st.success(f"🔥 MELHOR OPORTUNIDADE: {top['Ativo']} | Score {top['Score']}")
     # =========================
     # ANÁLISE
     # =========================
