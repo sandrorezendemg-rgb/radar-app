@@ -1,100 +1,85 @@
+# app.py
 import streamlit as st
 import pandas as pd
 from radar_engine import run_radar
-from ai_agent import run_agent
 
 # =========================
-# CONFIG
+# CONFIGURAÇÃO DA PÁGINA
 # =========================
-st.set_page_config(layout="wide", page_title="🚀 Radar Confluência PRO")
-
-# =========================
-# HEADER
-# =========================
+st.set_page_config(layout="wide")
 st.title("🚀 Radar Confluência PRO")
 st.caption("SMC + Multi-Timeframe + Execução Inteligente")
 
+# =========================
+# SELEÇÃO DE NARRATIVAS FUTURISTA
+# =========================
+st.subheader("Escolha as Narrativas")
+
+narratives_list = ["AI", "RWA", "DEFI", "L1", "L2", "BLUE CHIPS", "ORACULO"]
+narratives_selected = []
+
+cols = st.columns(len(narratives_list))
+for i, n in enumerate(narratives_list):
+    if cols[i].button(n):
+        narratives_selected.append(n)
+
+if not narratives_selected:
+    st.info("Nenhuma narrativa selecionada. Rodando Radar para todos os ativos USDT.")
+
 st.divider()
 
 # =========================
-# NARRATIVAS (Checkbox estilo futurista)
-# =========================
-st.subheader("Selecione Narrativas")
-
-options = ["AI", "RWA", "DEFI", "L1", "L2", "BLUE CHIPS", "ORACULO"]
-cols = st.columns(len(options))
-selected_narratives = []
-
-for idx, n in enumerate(options):
-    if cols[idx].checkbox(n):
-        selected_narratives.append(n)
-
-if not selected_narratives:
-    st.info("Selecione ao menos uma narrativa para rodar o Radar.")
-
-st.divider()
-
-# =========================
-# RISCO e MODO
+# CONFIGURAÇÕES DE RISCO E MODO
 # =========================
 col1, col2 = st.columns(2)
 
 with col1:
-    risk = st.radio("Risco", ["Baixo", "Médio", "Alto"], horizontal=True)
+    risk = st.selectbox("Risco", ["Baixo", "Médio", "Alto"], index=1)
 
 with col2:
-    mode = st.radio("Modo", ["Sniper", "Intraday", "Swing"], horizontal=True)
+    mode = st.selectbox("Modo", ["Sniper", "Intraday", "Swing"], index=0)
 
 st.divider()
 
 # =========================
-# EXECUÇÃO RADAR
+# EXECUÇÃO DO RADAR
 # =========================
 if st.button("🔍 Rodar Radar"):
-    if not selected_narratives:
-        st.warning("Selecione ao menos uma narrativa.")
-        st.stop()
 
-    df = run_radar(selected_narratives, risk, mode)
+    with st.spinner("Executando Radar e coletando dados da Binance..."):
+        df = run_radar(selected_narratives=narratives_selected, risk=risk, mode=mode)
 
     if df.empty:
-        st.warning("Nenhum ativo encontrado para as narrativas selecionadas.")
+        st.warning("Nenhum ativo encontrado com volume suficiente ou critérios aplicados.")
         st.stop()
 
-    # Filtrar por Score mínimo
+    # =========================
+    # FILTRAGEM DE SCORE
+    # =========================
     df = df[df["Score"] >= 4]
     if df.empty:
-        st.warning("Nenhuma oportunidade com score relevante.")
+        st.warning("Nenhum ativo com Score relevante encontrado.")
         st.stop()
 
-    # Ranking
+    # =========================
+    # RANKING
+    # =========================
     df = df.sort_values(by="Score", ascending=False)
-    top = df.iloc[0]
-
-    st.divider()
 
     # =========================
-    # AÇÃO IMEDIATA (Top Ativo)
-    # =========================
-    st.markdown("## ⚡ Ação Imediata")
-    st.success(f"""
-🎯 **Ativo:** {top['Ativo']}  
-📈 **Sinal:** {top['Sinal']}  
-📊 **Score:** {top['Score']}  
-
-💰 **Entrada:** {top['Entrada']}  
-🛑 **Stop:** {top['SL']}  
-🎯 **Alvo:** {top['TP2']}
-""")
-
-    st.divider()
-
-    # =========================
-    # RANKING VISUAL DE TODOS OS ATIVOS
+    # TABELA DE RANKING
     # =========================
     st.subheader("🏆 Ranking de Oportunidades")
+    st.dataframe(df[["Ativo", "Sinal", "Score", "Entrada", "SL", "TP1", "TP2"]], use_container_width=True)
 
-    for _, row in df.iterrows():
+    st.divider()
+
+    # =========================
+    # CARDS DE AÇÃO IMEDIATA
+    # =========================
+    st.subheader("⚡ Ação Imediata - Top 5 Ativos")
+
+    for idx, row in df.head(5).iterrows():
         color = "#00C853" if row["Sinal"] == "COMPRA" else "#D50000"
         qualidade = "🔥 ALTA" if row["Score"] >= 6 else "⚠️ MÉDIA"
 
@@ -105,7 +90,6 @@ margin-bottom:12px;
 border-radius:10px;
 background-color:#111;
 border-left:5px solid {color};
-color:#fff;
 ">
 
 <h3>{row['Ativo']} | {row['Sinal']}</h3>
@@ -117,7 +101,8 @@ color:#fff;
 
 <b>Entrada:</b> {row['Entrada']}  
 <b>SL:</b> {row['SL']}  
-<b>TP:</b> {row['TP2']}  
+<b>TP1:</b> {row['TP1']}  
+<b>TP2:</b> {row['TP2']}  
 
 <hr>
 
@@ -132,8 +117,9 @@ color:#fff;
     st.divider()
 
     # =========================
-    # RACIONAL INSTITUCIONAL
+    # EXPLICAÇÃO DO RACIONAL
     # =========================
-    st.subheader("🧠 Racional Institucional")
-    analysis = run_agent(df.head(3).to_dict(orient="records"))
-    st.info(analysis)
+    st.subheader("🧠 Racional Institucional (Simulado)")
+
+    st.info("Para cada ativo, o Radar analisa multi-timeframe (1D → 1M) e aplica lógica SMC, OB + FVG e Sniper. "
+            "Entradas e SL/TP são simuladas neste teste, valores reais virão com análise completa de fluxo e confluência.")
