@@ -12,13 +12,13 @@ TICKER_URL = "https://api.binance.com/api/v3/ticker/price"
 # MAPA DE NARRATIVAS
 # =========================
 NARRATIVE_MAP = {
-    "AI": ["RNDRUSDT","GALAUSDT","AGIXUSDT"],
+    "AI": ["RNDRUSDT","MORPHOUSDT","TAOUSDT"],
     "RWA": ["PAXGUSDT","TUSDUSDT"],
     "DeFi": ["UNIUSDT","AAVEUSDT","CAKEUSDT"],
     "L1": ["ETHUSDT","SOLUSDT","ADAUSDT"],
     "L2": ["MATICUSDT","OPUSDT","ARBUSDT"],
-    "BLUE CHIPS": ["BTCUSDT","ETHUSDT","BNBUSDT"],
-    "ORACULO": ["LINKUSDT","API3USDT"]
+    "BLUE CHIPS": ["BTCUSDT","ETHUSDT","XRPUSDT"],
+    "ORACULO": ["LINKUSDT","HBARUSDT"]
 }
 
 # =========================
