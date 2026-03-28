@@ -21,7 +21,15 @@ def get_data(symbol, interval, limit=200):
 
     try:
         r = requests.get(url, params=params, timeout=5)
+
+        if r.status_code != 200:
+            return pd.DataFrame()
+
         data = r.json()
+
+        # valida erro da binance
+        if isinstance(data, dict):
+            return pd.DataFrame()
 
         df = pd.DataFrame(data, columns=[
             "time","open","high","low","close","volume",
