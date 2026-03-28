@@ -37,60 +37,73 @@ with col3:
 # =========================
 if st.button("🔍 Rodar Radar"):
 
-    df = run_radar(narratives, risk, mode)
+    try:
+        df = run_radar(narratives, risk, mode)
 
-    if df.empty:
-        st.warning("Nenhuma oportunidade encontrada.")
-        st.stop()
+        # =========================
+        # VALIDAÇÃO INICIAL
+        # =========================
+        if df is None or df.empty:
+            st.warning("Nenhuma oportunidade encontrada.")
+            st.stop()
 
-    # =========================
-    # FILTRO QUALIDADE
-    # =========================
-    df = df[df["Score"] >= 4]
+        # Verifica colunas essenciais
+        required_cols = ["Ativo", "Score", "Sinal"]
+        for col in required_cols:
+            if col not in df.columns:
+                st.error(f"Erro: coluna obrigatória '{col}' não encontrada.")
+                st.stop()
 
-    if df.empty:
-        st.warning("Nenhuma oportunidade com score relevante.")
-        st.stop()
+        # =========================
+        # FILTRO QUALIDADE
+        # =========================
+        df = df[df["Score"] >= 4]
 
-    # =========================
-    # RANKING
-    # =========================
-    df = df.sort_values(by="Score", ascending=False)
+        if df.empty:
+            st.warning("Nenhuma oportunidade com score relevante.")
+            st.stop()
 
-    top = df.iloc[0]
+        # =========================
+        # RANKING
+        # =========================
+        df = df.sort_values(by="Score", ascending=False)
 
-    st.divider()
+        top = df.iloc[0]
 
-    # =========================
-    # AÇÃO IMEDIATA
-    # =========================
-    st.markdown("## ⚡ Ação Imediata")
+        st.divider()
 
-    st.success(f"""
-🎯 **Ativo:** {top['Ativo']}  
-📈 **Sinal:** {top['Sinal']}  
-📊 **Score:** {top['Score']}  
+        # =========================
+        # AÇÃO IMEDIATA
+        # =========================
+        st.markdown("## ⚡ Ação Imediata")
 
-💰 **Entrada:** {top['Entrada']}  
-🛑 **Stop:** {top['SL']}  
-🎯 **Alvo:** {top['TP2']}
+        st.success(f"""
+🎯 **Ativo:** {top.get('Ativo','-')}  
+📈 **Sinal:** {top.get('Sinal','-')}  
+📊 **Score:** {top.get('Score','-')}  
+
+💰 **Entrada:** {top.get('Entrada','-')}  
+🛑 **Stop:** {top.get('SL','-')}  
+🎯 **Alvo:** {top.get('TP2','-')}
 """)
 
-    st.divider()
+        st.divider()
 
-    # =========================
-    # RANKING VISUAL
-    # =========================
-    st.subheader("🏆 Ranking de Oportunidades")
+        # =========================
+        # RANKING VISUAL
+        # =========================
+        st.subheader("🏆 Ranking de Oportunidades")
 
-    for i in range(len(df)):
-        row = df.iloc[i]
+        for i in range(len(df)):
+            row = df.iloc[i]
 
-        color = "#00C853" if row["Sinal"] == "COMPRA" else "#D50000"
+            sinal = row.get("Sinal", "")
+            color = "#00C853" if sinal == "COMPRA" else "#D50000"
 
-        qualidade = "🔥 ALTA" if row["Score"] >= 6 else "⚠️ MÉDIA"
+            score = row.get("Score", 0)
+            qualidade = "🔥 ALTA" if score >= 6 else "⚠️ MÉDIA"
 
-        st.markdown(f"""
+            st.markdown(f"""
 <div style="
 padding:15px;
 margin-bottom:12px;
@@ -99,16 +112,16 @@ background-color:#111;
 border-left:5px solid {color};
 ">
 
-<h3>{row['Ativo']} | {row['Sinal']}</h3>
+<h3>{row.get('Ativo','-')} | {sinal}</h3>
 
-<b>Score:</b> {row['Score']}  
+<b>Score:</b> {score}  
 <b>Qualidade:</b> {qualidade}  
 
 <br>
 
-<b>Entrada:</b> {row['Entrada']}  
-<b>SL:</b> {row['SL']}  
-<b>TP:</b> {row['TP2']}  
+<b>Entrada:</b> {row.get('Entrada','-')}  
+<b>SL:</b> {row.get('SL','-')}  
+<b>TP:</b> {row.get('TP2','-')}  
 
 <hr>
 
@@ -120,13 +133,19 @@ border-left:5px solid {color};
 </div>
 """, unsafe_allow_html=True)
 
-    st.divider()
+        st.divider()
 
-    # =========================
-    # ANÁLISE IA
-    # =========================
-    st.subheader("🧠 Racional Institucional")
+        # =========================
+        # ANÁLISE IA
+        # =========================
+        st.subheader("🧠 Racional Institucional")
 
-    analysis = run_agent(df.head(3).to_dict(orient="records"))
+        try:
+            analysis = run_agent(df.head(3).to_dict(orient="records"))
+            st.info(analysis)
+        except Exception as e:
+            st.warning(f"Erro na análise IA: {e}")
 
-    st.info(analysis)
+    except Exception as e:
+        st.error(f"Erro geral na execução: {e}")
+        st.stop()
