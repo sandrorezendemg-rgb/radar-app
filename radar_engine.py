@@ -12,7 +12,7 @@ NARRATIVAS = {
 }
 
 # =========================
-# BINANCE DATA
+# DATA BINANCE
 # =========================
 def get_data(symbol, interval, limit=200):
     url = "https://api.binance.com/api/v3/klines"
@@ -27,16 +27,15 @@ def get_data(symbol, interval, limit=200):
             "ct","qav","trades","tb","tq","ignore"
         ])
 
-        df["close"] = df["close"].astype(float)
-        df["high"] = df["high"].astype(float)
-        df["low"] = df["low"].astype(float)
+        for col in ["open","high","low","close"]:
+            df[col] = df[col].astype(float)
 
         return df
     except:
         return pd.DataFrame()
 
 # =========================
-# SMC CORE
+# SMC DETECTORS
 # =========================
 
 def detect_trend(df):
@@ -47,6 +46,28 @@ def detect_bos(df):
 
 def detect_sweep(df):
     return df["low"].iloc[-1] < df["low"].rolling(20).min().iloc[-2]
+
+def detect_fvg(df):
+    # gap entre candle 1 e 3
+    for i in range(len(df)-3, len(df)-1):
+        if df["low"].iloc[i] > df["high"].iloc[i-2]:
+            return True
+    return False
+
+def detect_order_block(df):
+    # último candle oposto antes de impulso
+    last = df.iloc[-1]
+    prev = df.iloc[-5:-1]
+
+    bearish_block = prev[prev["close"] < prev["open"]]
+    bullish_block = prev[prev["close"] > prev["open"]]
+
+    if last["close"] > last["open"] and not bearish_block.empty:
+        return "Bullish OB"
+    elif last["close"] < last["open"] and not bullish_block.empty:
+        return "Bearish OB"
+
+    return None
 
 def detect_momentum(df):
     return df["close"].iloc[-1] > df["close"].iloc[-5]
@@ -75,28 +96,29 @@ def run_radar(narratives, risk, mode):
             continue
 
         # =========================
-        # 1D → BIAS
+        # 1D
         # =========================
         trend = detect_trend(df_1d)
         bos = detect_bos(df_1d)
 
         # =========================
-        # 4H → CONTEXTO
+        # 4H (ZONAS)
         # =========================
-        momentum_4h = detect_momentum(df_4h)
+        ob = detect_order_block(df_4h)
+        fvg = detect_fvg(df_4h)
 
         # =========================
-        # 15M → GATILHO
+        # 15M (GATILHO)
         # =========================
         sweep = detect_sweep(df_15m)
 
         # =========================
-        # 1M → CONFIRMAÇÃO
+        # 1M (CONFIRMAÇÃO)
         # =========================
         confirm = detect_momentum(df_1m)
 
         # =========================
-        # SCORE SMC
+        # SCORE
         # =========================
         score = 0
 
@@ -104,27 +126,29 @@ def run_radar(narratives, risk, mode):
             score += 2
         if bos:
             score += 1
-        if momentum_4h:
+        if ob:
+            score += 2
+        if fvg:
             score += 1
         if sweep:
             score += 1
         if confirm:
             score += 1
 
-        sinal = "COMPRA" if score >= 4 else "VENDA"
+        sinal = "COMPRA" if score >= 5 else "VENDA"
 
         price = df_1m["close"].iloc[-1]
 
         results.append({
             "Ativo": ativo,
             "Entrada": round(price, 4),
-            "SL": round(price * 0.98, 4),
+            "SL": round(price * 0.97, 4),
             "TP1": round(price * 1.02, 4),
-            "TP2": round(price * 1.04, 4),
+            "TP2": round(price * 1.05, 4),
             "Score": score,
             "Sinal": sinal,
             "1D": f"{trend} {'BOS' if bos else ''}",
-            "4H": "Momentum" if momentum_4h else "Fraco",
+            "4H": f"{ob if ob else 'Sem OB'} | {'FVG' if fvg else 'Sem FVG'}",
             "15M": "Sweep" if sweep else "Sem sweep",
             "1M": "Confirmação" if confirm else "Sem confirmação"
         })
