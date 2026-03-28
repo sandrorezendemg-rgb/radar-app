@@ -14,21 +14,25 @@ st.set_page_config(layout="wide", page_title="🚀 Radar Confluência PRO")
 st.title("🚀 Radar Confluência PRO")
 st.caption("SMC + Multi-Timeframe + Execução Inteligente")
 
+st.divider()
+
 # =========================
-# NARRATIVAS (Botões estilo futurista)
+# NARRATIVAS (Checkbox estilo futurista)
 # =========================
 st.subheader("Selecione Narrativas")
 
-cols = st.columns(7)
-narratives_options = ["AI", "RWA", "DEFI", "L1", "L2", "BLUE CHIPS", "ORACULO"]
+options = ["AI", "RWA", "DEFI", "L1", "L2", "BLUE CHIPS", "ORACULO"]
+cols = st.columns(len(options))
 selected_narratives = []
 
-for idx, option in enumerate(narratives_options):
-    if cols[idx].button(option):
-        selected_narratives.append(option)
+for idx, n in enumerate(options):
+    if cols[idx].checkbox(n):
+        selected_narratives.append(n)
 
 if not selected_narratives:
     st.info("Selecione ao menos uma narrativa para rodar o Radar.")
+
+st.divider()
 
 # =========================
 # RISCO e MODO
