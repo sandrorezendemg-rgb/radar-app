@@ -11,20 +11,17 @@ st.title("🚀 Radar Confluência PRO")
 st.caption("SMC + Multi-Timeframe + Execução Inteligente")
 
 # =========================
-# SELEÇÃO DE NARRATIVAS FUTURISTA
+# SELEÇÃO DE NARRATIVAS
 # =========================
 st.subheader("Escolha as Narrativas")
 
 narratives_list = ["AI", "RWA", "DEFI", "L1", "L2", "BLUE CHIPS", "ORACULO"]
-narratives_selected = []
-
-cols = st.columns(len(narratives_list))
-for i, n in enumerate(narratives_list):
-    if cols[i].button(n):
-        narratives_selected.append(n)
-
-if not narratives_selected:
-    st.info("Nenhuma narrativa selecionada. Rodando Radar para todos os ativos USDT.")
+narratives_selected = st.multiselect(
+    "Narrativas",
+    narratives_list,
+    default=[],
+    help="Selecione uma ou mais narrativas. Se nenhuma, o radar varrerá todos os ativos USDT."
+)
 
 st.divider()
 
@@ -121,5 +118,7 @@ border-left:5px solid {color};
     # =========================
     st.subheader("🧠 Racional Institucional (Simulado)")
 
-    st.info("Para cada ativo, o Radar analisa multi-timeframe (1D → 1M) e aplica lógica SMC, OB + FVG e Sniper. "
-            "Entradas e SL/TP são simuladas neste teste, valores reais virão com análise completa de fluxo e confluência.")
+    st.info(
+        "Para cada ativo, o Radar analisa multi-timeframe (1D → 1M) e aplica lógica SMC, OB + FVG e Sniper. "
+        "Entradas e SL/TP são simuladas neste teste; valores reais virão com análise completa de fluxo e confluência."
+    )
