@@ -48,24 +48,20 @@ st.markdown("---")
 if st.button("🔍 Rodar Radar"):
 
     with st.spinner("Rodando Radar e analisando ativos..."):
-        # run_radar agora retorna df filtrado + watchlist
-        df, watchlist = run_radar(narratives, risk, mode)
+        # run_radar retorna apenas df principal
+        df = run_radar(narratives, risk, mode)
 
     # =========================
     # RESULTADOS
     # =========================
     if df.empty:
         st.warning("Nenhuma oportunidade passou nos critérios do Radar.")
-        if not watchlist.empty:
-            st.subheader("📌 Watchlist de ativos próximos")
-            st.table(watchlist)
     else:
         st.success(f"{len(df)} ativos selecionados para ação imediata.")
 
         # =========================
-        # AÇÃO IMEDIATA
+        # AÇÃO IMEDIATA E RANKING
         # =========================
-        st.subheader("⚡ Ação Imediata")
         for idx, row in df.iterrows():
             color = "#00C853" if row["Sinal"]=="COMPRA" else "#D50000"
             qualidade = "🔥 ALTA" if row["Score"]>=6 else "⚠️ MÉDIA"
@@ -82,13 +78,6 @@ if st.button("🔍 Rodar Radar"):
 <b>1M:</b> {row.get('1M','-')}
 </div>
 """, unsafe_allow_html=True)
-
-        # =========================
-        # WATCHLIST
-        # =========================
-        if not watchlist.empty:
-            st.subheader("📌 Watchlist de ativos próximos")
-            st.table(watchlist)
 
         # =========================
         # RACIONAL INSTITUCIONAL
