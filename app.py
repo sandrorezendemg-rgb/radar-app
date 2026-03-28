@@ -1,151 +1,136 @@
+  
 import streamlit as st
-import pandas as pd
 from radar_engine import run_radar
 from ai_agent import run_agent
 
-# =========================
-# CONFIG
-# =========================
 st.set_page_config(layout="wide")
+
+# =========================
+# ESTILO FUTURISTA
+# =========================
+st.markdown("""
+<style>
+.stApp {
+    background-color: #0e1117;
+    color: white;
+}
+button {
+    border-radius: 10px !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 # =========================
 # HEADER
 # =========================
 st.title("🚀 Radar Confluência PRO")
-st.caption("SMC + Multi-Timeframe + Execução Inteligente")
+st.caption("Modo Institucional Ativo")
 
 # =========================
-# FILTROS
+# NARRATIVAS (TOGGLE STYLE)
 # =========================
-col1, col2, col3 = st.columns(3)
+st.subheader("🧠 Narrativas")
+
+col1, col2, col3, col4 = st.columns(4)
 
 with col1:
-    narratives = st.multiselect(
-        "Narrativas",
-        ["AI", "RWA", "DeFi", "Gaming"],
-        default=["AI"]
-    )
-
+    ai = st.toggle("AI")
 with col2:
-    risk = st.selectbox("Risco", ["Baixo", "Médio", "Alto"])
-
+    defi = st.toggle("DeFi")
 with col3:
-    mode = st.selectbox("Modo", ["Sniper", "Intraday", "Swing"])
+    rwa = st.toggle("RWA")
+with col4:
+    gaming = st.toggle("Gaming")
+
+narratives = []
+if ai: narratives.append("AI")
+if defi: narratives.append("DeFi")
+if rwa: narratives.append("RWA")
+if gaming: narratives.append("Gaming")
+
+# =========================
+# CONTROLE RÁPIDO
+# =========================
+col5, col6 = st.columns(2)
+
+with col5:
+    risk = st.radio("Risco", ["Baixo", "Médio", "Alto"], horizontal=True)
+
+with col6:
+    mode = st.radio("Modo", ["Sniper", "Intraday", "Swing"], horizontal=True)
 
 # =========================
 # EXECUÇÃO
 # =========================
-if st.button("🔍 Rodar Radar"):
+if st.button("⚡ Rodar Radar"):
 
-    try:
-        df = run_radar(narratives, risk, mode)
+    df = run_radar(narratives, risk, mode)
 
-        # =========================
-        # VALIDAÇÃO INICIAL
-        # =========================
-        if df is None or df.empty:
-            st.warning("Nenhuma oportunidade encontrada.")
-            st.stop()
+    if df.empty:
+        st.warning("Nenhum ativo encontrado.")
+        st.stop()
 
-        # Verifica colunas essenciais
-        required_cols = ["Ativo", "Score", "Sinal"]
-        for col in required_cols:
-            if col not in df.columns:
-                st.error(f"Erro: coluna obrigatória '{col}' não encontrada.")
-                st.stop()
+    df = df.sort_values(by="Score", ascending=False)
 
-        # =========================
-        # FILTRO QUALIDADE
-        # =========================
-        df = df[df["Score"] >= 4]
+    top = df.iloc[0]
 
-        if df.empty:
-            st.warning("Nenhuma oportunidade com score relevante.")
-            st.stop()
+    # =========================
+    # AÇÃO IMEDIATA
+    # =========================
+    st.markdown("## ⚡ Melhor Trade Agora")
 
-        # =========================
-        # RANKING
-        # =========================
-        df = df.sort_values(by="Score", ascending=False)
+    st.success(f"""
+🎯 {top['Ativo']} | {top['Sinal']}  
+Score: {top['Score']}
 
-        top = df.iloc[0]
-
-        st.divider()
-
-        # =========================
-        # AÇÃO IMEDIATA
-        # =========================
-        st.markdown("## ⚡ Ação Imediata")
-
-        st.success(f"""
-🎯 **Ativo:** {top.get('Ativo','-')}  
-📈 **Sinal:** {top.get('Sinal','-')}  
-📊 **Score:** {top.get('Score','-')}  
-
-💰 **Entrada:** {top.get('Entrada','-')}  
-🛑 **Stop:** {top.get('SL','-')}  
-🎯 **Alvo:** {top.get('TP2','-')}
+Entrada: {top['Entrada']}  
+SL: {top['SL']}  
+TP: {top['TP2']}
 """)
 
-        st.divider()
+    st.divider()
 
-        # =========================
-        # RANKING VISUAL
-        # =========================
-        st.subheader("🏆 Ranking de Oportunidades")
+    # =========================
+    # CARDS FUTURISTAS
+    # =========================
+    for _, row in df.iterrows():
 
-        for i in range(len(df)):
-            row = df.iloc[i]
+        color = "#00FFAA" if row["Sinal"] == "COMPRA" else "#FF4B4B"
 
-            sinal = row.get("Sinal", "")
-            color = "#00C853" if sinal == "COMPRA" else "#D50000"
-
-            score = row.get("Score", 0)
-            qualidade = "🔥 ALTA" if score >= 6 else "⚠️ MÉDIA"
-
-            st.markdown(f"""
+        st.markdown(f"""
 <div style="
 padding:15px;
-margin-bottom:12px;
-border-radius:10px;
-background-color:#111;
-border-left:5px solid {color};
+margin-bottom:10px;
+border-radius:12px;
+background: linear-gradient(145deg,#111,#1c1f26);
+border-left:4px solid {color};
 ">
 
-<h3>{row.get('Ativo','-')} | {sinal}</h3>
+<h3>{row['Ativo']} | {row['Sinal']}</h3>
 
-<b>Score:</b> {score}  
-<b>Qualidade:</b> {qualidade}  
+Score: {row['Score']} <br>
 
-<br>
-
-<b>Entrada:</b> {row.get('Entrada','-')}  
-<b>SL:</b> {row.get('SL','-')}  
-<b>TP:</b> {row.get('TP2','-')}  
+Entrada: {row['Entrada']}  
+SL: {row['SL']}  
+TP: {row['TP2']}  
 
 <hr>
 
-<b>1D:</b> {row.get('1D','-')}<br>
-<b>4H:</b> {row.get('4H','-')}<br>
-<b>15M:</b> {row.get('15M','-')}<br>
-<b>1M:</b> {row.get('1M','-')}
+1D: {row['1D']}  
+4H: {row['4H']}  
+15M: {row['15M']}  
+1M: {row['1M']}
 
 </div>
 """, unsafe_allow_html=True)
 
-        st.divider()
+    st.divider()
 
-        # =========================
-        # ANÁLISE IA
-        # =========================
-        st.subheader("🧠 Racional Institucional")
+    # =========================
+    # IA
+    # =========================
+    st.subheader("🧠 Racional IA")
 
-        try:
-            analysis = run_agent(df.head(3).to_dict(orient="records"))
-            st.info(analysis)
-        except Exception as e:
-            st.warning(f"Erro na análise IA: {e}")
+    analysis = run_agent(df.head(3).to_dict(orient="records"))
 
-    except Exception as e:
-        st.error(f"Erro geral na execução: {e}")
-        st.stop()
+    st.info(analysis)
