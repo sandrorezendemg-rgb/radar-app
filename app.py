@@ -3,6 +3,9 @@ import pandas as pd
 from radar_engine import run_radar
 from ai_agent import run_agent
 
+# =========================
+# CONFIG
+# =========================
 st.set_page_config(layout="wide")
 
 # =========================
@@ -30,38 +33,67 @@ with col3:
     mode = st.selectbox("Modo", ["Sniper", "Intraday", "Swing"])
 
 # =========================
-# BOTÃO
+# EXECUÇÃO
 # =========================
 if st.button("🔍 Rodar Radar"):
 
     df = run_radar(narratives, risk, mode)
-    analysis = run_agent(df.head(3).to_dict(orient="records"))
+
+    if df.empty:
+        st.warning("Nenhuma oportunidade encontrada.")
+        st.stop()
+
+    # =========================
+    # FILTRO QUALIDADE
+    # =========================
+    df = df[df["Score"] >= 4]
+
+    if df.empty:
+        st.warning("Nenhuma oportunidade com score relevante.")
+        st.stop()
+
+    # =========================
+    # RANKING
+    # =========================
+    df = df.sort_values(by="Score", ascending=False)
+
+    top = df.iloc[0]
 
     st.divider()
 
     # =========================
-    # SINAIS EM CARDS
+    # AÇÃO IMEDIATA
     # =========================
+    st.markdown("## ⚡ Ação Imediata")
+
+    st.success(f"""
+🎯 **Ativo:** {top['Ativo']}  
+📈 **Sinal:** {top['Sinal']}  
+📊 **Score:** {top['Score']}  
+
+💰 **Entrada:** {top['Entrada']}  
+🛑 **Stop:** {top['SL']}  
+🎯 **Alvo:** {top['TP2']}
+""")
+
+    st.divider()
+
     # =========================
-# RANKING AUTOMÁTICO
-# =========================
-df = df.sort_values(by="Score", ascending=False)
+    # RANKING VISUAL
+    # =========================
+    st.subheader("🏆 Ranking de Oportunidades")
 
-st.subheader("🏆 Ranking de Oportunidades")
+    for i in range(len(df)):
+        row = df.iloc[i]
 
-# =========================
-# CARDS COM CORES
-# =========================
-for i in range(len(df)):
+        color = "#00C853" if row["Sinal"] == "COMPRA" else "#D50000"
 
-    row = df.iloc[i]
+        qualidade = "🔥 ALTA" if row["Score"] >= 6 else "⚠️ MÉDIA"
 
-    color = "#00C853" if row["Sinal"] == "COMPRA" else "#D50000"
-
-    st.markdown(f"""
+        st.markdown(f"""
 <div style="
 padding:15px;
-margin-bottom:10px;
+margin-bottom:12px;
 border-radius:10px;
 background-color:#111;
 border-left:5px solid {color};
@@ -69,26 +101,32 @@ border-left:5px solid {color};
 
 <h3>{row['Ativo']} | {row['Sinal']}</h3>
 
-<b>Score:</b> {row['Score']} <br>
-<b>Entrada:</b> {row['Entrada']} | 
-<b>SL:</b> {row['SL']} | 
-<b>TP:</b> {row['TP2']} <br><br>
+<b>Score:</b> {row['Score']}  
+<b>Qualidade:</b> {qualidade}  
 
-<b>1D:</b> {row['1D']}<br>
-<b>4H:</b> {row['4H']}<br>
-<b>15M:</b> {row['15M']}<br>
-<b>1M:</b> {row['1M']}
+<br>
+
+<b>Entrada:</b> {row['Entrada']}  
+<b>SL:</b> {row['SL']}  
+<b>TP:</b> {row['TP2']}  
+
+<hr>
+
+<b>1D:</b> {row.get('1D','-')}<br>
+<b>4H:</b> {row.get('4H','-')}<br>
+<b>15M:</b> {row.get('15M','-')}<br>
+<b>1M:</b> {row.get('1M','-')}
 
 </div>
 """, unsafe_allow_html=True)
 
-# destaque TOP 1
-top = df.iloc[0]
+    st.divider()
 
-st.success(f"🔥 MELHOR OPORTUNIDADE: {top['Ativo']} | Score {top['Score']}")
     # =========================
-    # ANÁLISE
+    # ANÁLISE IA
     # =========================
-    st.subheader("🧠 Análise Institucional")
+    st.subheader("🧠 Racional Institucional")
 
-    st.text(analysis)
+    analysis = run_agent(df.head(3).to_dict(orient="records"))
+
+    st.info(analysis)
