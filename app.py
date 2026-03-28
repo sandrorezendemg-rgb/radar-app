@@ -1,136 +1,97 @@
-  
 import streamlit as st
+import pandas as pd
 from radar_engine import run_radar
 from ai_agent import run_agent
 
-st.set_page_config(layout="wide")
-
 # =========================
-# ESTILO FUTURISTA
+# CONFIGURAÇÃO PÁGINA
 # =========================
-st.markdown("""
-<style>
-.stApp {
-    background-color: #0e1117;
-    color: white;
-}
-button {
-    border-radius: 10px !important;
-}
-</style>
-""", unsafe_allow_html=True)
+st.set_page_config(
+    page_title="🚀 Radar Confluência PRO",
+    layout="wide"
+)
 
 # =========================
 # HEADER
 # =========================
 st.title("🚀 Radar Confluência PRO")
-st.caption("Modo Institucional Ativo")
+st.caption("SMC + Multi-Timeframe + Execução Inteligente + Sniper R:R")
+
+st.markdown("---")
 
 # =========================
-# NARRATIVAS (TOGGLE STYLE)
+# FILTROS VISUAIS
 # =========================
-st.subheader("🧠 Narrativas")
+st.subheader("🔧 Seleção de Narrativas e Perfil")
 
-col1, col2, col3, col4 = st.columns(4)
-
-with col1:
-    ai = st.toggle("AI")
-with col2:
-    defi = st.toggle("DeFi")
-with col3:
-    rwa = st.toggle("RWA")
-with col4:
-    gaming = st.toggle("Gaming")
+cols = st.columns([1,1,1,1])
 
 narratives = []
-if ai: narratives.append("AI")
-if defi: narratives.append("DeFi")
-if rwa: narratives.append("RWA")
-if gaming: narratives.append("Gaming")
+if cols[0].button("AI"): narratives.append("AI")
+if cols[1].button("RWA"): narratives.append("RWA")
+if cols[2].button("DeFi"): narratives.append("DeFi")
+if cols[3].button("L1"): narratives.append("L1")
+
+cols2 = st.columns([1,1,1,1])
+if cols2[0].button("L2"): narratives.append("L2")
+if cols2[1].button("Blue Chips"): narratives.append("Blue Chips")
+if cols2[2].button("Oráculo"): narratives.append("Oraculo")
+if cols2[3].button("Todas"): narratives = ["AI","RWA","DeFi","L1","L2","Blue Chips","Oraculo"]
+
+risk = st.radio("⚡ Nível de Risco", ["Baixo", "Médio", "Alto"], horizontal=True)
+mode = st.radio("🏹 Modo Radar", ["Sniper", "Intraday", "Swing"], horizontal=True)
+
+st.markdown("---")
 
 # =========================
-# CONTROLE RÁPIDO
+# EXECUÇÃO RADAR
 # =========================
-col5, col6 = st.columns(2)
+if st.button("🔍 Rodar Radar"):
 
-with col5:
-    risk = st.radio("Risco", ["Baixo", "Médio", "Alto"], horizontal=True)
+    with st.spinner("Rodando Radar e analisando ativos..."):
+        df, watchlist = run_radar(narratives, risk, mode)
 
-with col6:
-    mode = st.radio("Modo", ["Sniper", "Intraday", "Swing"], horizontal=True)
-
-# =========================
-# EXECUÇÃO
-# =========================
-if st.button("⚡ Rodar Radar"):
-
-    df = run_radar(narratives, risk, mode)
-
+    # =========================
+    # RESULTADOS
+    # =========================
     if df.empty:
-        st.warning("Nenhum ativo encontrado.")
-        st.stop()
-
-    df = df.sort_values(by="Score", ascending=False)
-
-    top = df.iloc[0]
-
-    # =========================
-    # AÇÃO IMEDIATA
-    # =========================
-    st.markdown("## ⚡ Melhor Trade Agora")
-
-    st.success(f"""
-🎯 {top['Ativo']} | {top['Sinal']}  
-Score: {top['Score']}
-
-Entrada: {top['Entrada']}  
-SL: {top['SL']}  
-TP: {top['TP2']}
-""")
-
-    st.divider()
-
-    # =========================
-    # CARDS FUTURISTAS
-    # =========================
-    for _, row in df.iterrows():
-
-        color = "#00FFAA" if row["Sinal"] == "COMPRA" else "#FF4B4B"
-
-        st.markdown(f"""
-<div style="
-padding:15px;
-margin-bottom:10px;
-border-radius:12px;
-background: linear-gradient(145deg,#111,#1c1f26);
-border-left:4px solid {color};
-">
-
+        st.warning("Nenhuma oportunidade passou nos critérios do Radar.")
+        if not watchlist.empty:
+            st.subheader("📌 Watchlist de ativos próximos")
+            st.table(watchlist)
+    else:
+        st.success(f"{len(df)} ativos selecionados para ação imediata.")
+        st.subheader("⚡ Ação Imediata")
+        for idx, row in df.iterrows():
+            color = "#00C853" if row["Sinal"]=="COMPRA" else "#D50000"
+            qualidade = "🔥 ALTA" if row["Score"]>=6 else "⚠️ MÉDIA"
+            st.markdown(f"""
+<div style="padding:15px;margin-bottom:12px;border-radius:10px;
+             background-color:#111;border-left:5px solid {color};">
 <h3>{row['Ativo']} | {row['Sinal']}</h3>
-
-Score: {row['Score']} <br>
-
-Entrada: {row['Entrada']}  
-SL: {row['SL']}  
-TP: {row['TP2']}  
-
+<b>Score:</b> {row['Score']}  | <b>Qualidade:</b> {qualidade}<br>
+<b>Entrada:</b> {row['Entrada']}  | <b>SL:</b> {row['SL']}  | <b>TP:</b> {row['TP2']}<br>
 <hr>
-
-1D: {row['1D']}  
-4H: {row['4H']}  
-15M: {row['15M']}  
-1M: {row['1M']}
-
+<b>1D:</b> {row.get('1D','-')}<br>
+<b>4H:</b> {row.get('4H','-')}<br>
+<b>15M:</b> {row.get('15M','-')}<br>
+<b>1M:</b> {row.get('1M','-')}
 </div>
 """, unsafe_allow_html=True)
 
-    st.divider()
+        # =========================
+        # WATCHLIST
+        # =========================
+        if not watchlist.empty:
+            st.subheader("📌 Watchlist de ativos próximos")
+            st.table(watchlist)
 
-    # =========================
-    # IA
-    # =========================
-    st.subheader("🧠 Racional IA")
+        # =========================
+        # RACIONAL INSTITUCIONAL
+        # =========================
+        st.subheader("🧠 Racional Institucional")
+        analysis = run_agent(df.head(5).to_dict(orient="records"))
+        st.info(analysis)
 
-    analysis = run_agent(df.head(3).to_dict(orient="records"))
-
-    st.info(analysis)
+    st.markdown("---")
+    st.caption("Radar Confluência PRO | SMC + Multi-Timeframe + Sniper R:R")
