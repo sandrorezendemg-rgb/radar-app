@@ -1,78 +1,70 @@
 import pandas as pd
-from binance.client import Client
+import requests
+import time
 
 # =========================
-# CONFIGURAÇÃO BINANCE
+# CONFIGURAÇÃO
 # =========================
-API_KEY = "SUA_API_KEY"
-API_SECRET = "SEU_API_SECRET"
-
-client = Client(API_KEY, API_SECRET)
+BASE_URL = "https://api.binance.com/api/v3/klines"
+TICKER_URL = "https://api.binance.com/api/v3/ticker/price"
 
 # =========================
 # FUNÇÃO RADAR
 # =========================
 def run_radar(narratives, risk, mode):
     """
-    narratives: lista de narrativas escolhidas pelo usuário
+    narratives: lista de narrativas (ex: AI, RWA, DeFi, L1, L2, Blue Chips, Oraculo)
     risk: "Baixo", "Médio", "Alto"
     mode: "Sniper", "Intraday", "Swing"
     """
 
     # =========================
-    # BUSCA DE ATIVOS
+    # PEGAR TODOS OS PARES USDT
     # =========================
-    tickers = client.get_ticker()  # Todos os pares disponíveis
+    response = requests.get(TICKER_URL)
+    all_tickers = response.json()
+    usdt_pairs = [t['symbol'] for t in all_tickers if t['symbol'].endswith("USDT")]
+
     df_list = []
 
     # =========================
-    # FILTRAGEM POR NARRATIVAS
+    # FILTRAGEM POR NARRATIVA
     # =========================
-    for t in tickers:
-        symbol = t['symbol']
-
-        # Apenas USDT (simplificação)
-        if not symbol.endswith("USDT"):
-            continue
-
-        # Checa se ativo pertence a narrativa
+    for symbol in usdt_pairs:
+        # Checa se ativo pertence a alguma narrativa
         if not any(n.upper() in symbol for n in narratives):
             continue
 
         # =========================
-        # DADOS HISTÓRICOS
+        # BUSCA DADOS DE 1H
         # =========================
+        params = {
+            "symbol": symbol,
+            "interval": "1h",
+            "limit": 50
+        }
+
         try:
-            klines = client.get_klines(
-                symbol=symbol,
-                interval=Client.KLINE_INTERVAL_1HOUR,
-                limit=50
-            )
+            klines = requests.get(BASE_URL, params=params).json()
+            if len(klines) == 0:
+                continue
         except:
             continue
 
-        # Preço de fechamento atual
         close = float(klines[-1][4])
 
         # =========================
-        # CÁLCULO INICIAL DE ENTRADA E ALVOS
+        # CÁLCULO DE ENTRADA, SL E TP
         # =========================
-        # Ajusta R:R baseado em risco
         rr_map = {"Baixo": 1.5, "Médio": 2, "Alto": 3}
         rr = rr_map.get(risk, 2)
 
-        # Entrada = último fechamento
         entry = close
-
-        # Stop Loss = 2% abaixo do fechamento (exemplo)
         sl = round(entry * 0.98, 4)
-
-        # TP1 e TP2 baseados no R:R
         tp1 = round(entry + (entry - sl) * rr * 0.5, 4)
         tp2 = round(entry + (entry - sl) * rr, 4)
 
-        # Score fictício inicial
-        score = 5
+        score = 5  # score inicial
 
         df_list.append({
             "Ativo": symbol,
@@ -88,11 +80,12 @@ def run_radar(narratives, risk, mode):
             "1M": "-"
         })
 
+        # Delay pequeno para não sobrecarregar
+        time.sleep(0.05)
+
     df = pd.DataFrame(df_list)
 
-    # =========================
-    # RANKING POR SCORE
-    # =========================
+    # Ranking por score
     if not df.empty:
         df = df.sort_values(by="Score", ascending=False)
 
