@@ -1,16 +1,53 @@
-
 import pandas as pd
 import requests
 
 # =========================
-# NARRATIVAS
+# MAPA DE NARRATIVAS (BASE)
 # =========================
 NARRATIVAS = {
-    "AI": ["RNDRUSDT", "FETUSDT", "AGIXUSDT"],
-    "DeFi": ["UNIUSDT", "AAVEUSDT", "COMPUSDT"],
-    "RWA": ["ONDOUSDT", "POLYXUSDT"],
-    "Gaming": ["IMXUSDT", "GALAUSDT"]
+    "AI": ["RNDR", "FET", "AGIX", "OCEAN"],
+    "DeFi": ["UNI", "AAVE", "COMP", "SNX"],
+    "RWA": ["ONDO", "POLYX"],
+    "Gaming": ["IMX", "GALA", "AXS"]
 }
+
+# =========================
+# BUSCAR TOP 50 BINANCE
+# =========================
+def get_top_symbols():
+    url = "https://api.binance.com/api/v3/ticker/24hr"
+
+    try:
+        r = requests.get(url, timeout=5)
+        data = r.json()
+
+        df = pd.DataFrame(data)
+
+        df = df[df["symbol"].str.endswith("USDT")]
+        df["volume"] = df["quoteVolume"].astype(float)
+
+        df = df.sort_values(by="volume", ascending=False)
+
+        return df["symbol"].head(50).tolist()
+
+    except:
+        return []
+
+# =========================
+# FILTRAR POR NARRATIVA
+# =========================
+def filter_by_narrative(symbols, narratives):
+
+    selected = []
+
+    for sym in symbols:
+        base = sym.replace("USDT", "")
+
+        for n in narratives:
+            if base in NARRATIVAS.get(n, []):
+                selected.append(sym)
+
+    return list(set(selected))
 
 # =========================
 # BINANCE DATA
@@ -27,7 +64,6 @@ def get_data(symbol, interval, limit=200):
 
         data = r.json()
 
-        # valida erro da binance
         if isinstance(data, dict):
             return pd.DataFrame()
 
@@ -45,9 +81,8 @@ def get_data(symbol, interval, limit=200):
         return pd.DataFrame()
 
 # =========================
-# SMC CORE
+# SMC FUNÇÕES
 # =========================
-
 def detect_trend(df):
     return "Alta" if df["close"].iloc[-1] > df["close"].mean() else "Baixa"
 
@@ -82,9 +117,8 @@ def detect_order_block(df):
     return None
 
 # =========================
-# SNIPER + R:R
+# SNIPER + RR
 # =========================
-
 def get_swing_low(df):
     return df["low"].rolling(10).min().iloc[-1]
 
@@ -98,31 +132,34 @@ def calculate_rr(entry, sl, tp):
         return 0
     return round(reward / risk, 2)
 
-def sniper_entry(df_1m, direction):
-    price = df_1m["close"].iloc[-1]
+def sniper_entry(df, direction):
+    price = df["close"].iloc[-1]
 
     if direction == "COMPRA":
-        sl = get_swing_low(df_1m)
+        sl = get_swing_low(df)
         tp = price + (price - sl) * 2
     else:
-        sl = get_swing_high(df_1m)
+        sl = get_swing_high(df)
         tp = price - (sl - price) * 2
 
     rr = calculate_rr(price, sl, tp)
 
-    return round(price, 4), round(sl, 4), round(tp, 4), rr
+    return round(price,4), round(sl,4), round(tp,4), rr
 
 # =========================
 # RADAR PRINCIPAL
 # =========================
-
 def run_radar(narratives, risk, mode):
 
-    ativos = []
-    for n in narratives:
-        ativos.extend(NARRATIVAS.get(n, []))
+    top_symbols = get_top_symbols()
 
-    ativos = list(set(ativos))
+    if not top_symbols:
+        return pd.DataFrame()
+
+    ativos = filter_by_narrative(top_symbols, narratives)
+
+    if not ativos:
+        return pd.DataFrame()
 
     results = []
 
@@ -136,62 +173,36 @@ def run_radar(narratives, risk, mode):
         if df_1d.empty or df_4h.empty or df_15m.empty or df_1m.empty:
             continue
 
-        # =========================
-        # 1D → BIAS
-        # =========================
         trend = detect_trend(df_1d)
         bos = detect_bos(df_1d)
 
-        # =========================
-        # 4H → ZONAS
-        # =========================
         ob = detect_order_block(df_4h)
         fvg = detect_fvg(df_4h)
 
-        # =========================
-        # 15M → GATILHO
-        # =========================
         sweep = detect_sweep(df_15m)
-
-        # =========================
-        # 1M → CONFIRMAÇÃO
-        # =========================
         confirm = detect_momentum(df_1m)
 
-        # =========================
-        # SCORE
-        # =========================
         score = 0
-
-        if trend == "Alta":
-            score += 2
-        if bos:
-            score += 1
-        if ob:
-            score += 2
-        if fvg:
-            score += 1
-        if sweep:
-            score += 1
-        if confirm:
-            score += 1
+        if trend == "Alta": score += 2
+        if bos: score += 1
+        if ob: score += 2
+        if fvg: score += 1
+        if sweep: score += 1
+        if confirm: score += 1
 
         direction = "COMPRA" if score >= 5 else "VENDA"
 
-        # =========================
-        # SNIPER ENTRY
-        # =========================
         entry, sl, tp, rr = sniper_entry(df_1m, direction)
 
-        # filtro institucional
-        if rr < 1.5:
+        # filtro mais flexível para teste
+        if rr < 1.2:
             continue
 
         results.append({
             "Ativo": ativo,
             "Entrada": entry,
             "SL": sl,
-            "TP1": round(entry + (tp - entry) * 0.5, 4),
+            "TP1": round(entry + (tp-entry)*0.5,4),
             "TP2": tp,
             "RR": rr,
             "Score": score,
