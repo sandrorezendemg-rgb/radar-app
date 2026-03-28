@@ -96,10 +96,10 @@ border-left:5px solid {color};
 
 <br>
 
-<b>Entrada:</b> {row['Entrada']}  
-<b>SL:</b> {row['SL']}  
-<b>TP1:</b> {row['TP1']}  
-<b>TP2:</b> {row['TP2']}  
+<b>Entrada:</b> {row['Entrada']:.4f}  
+<b>SL:</b> {row['SL']:.4f}  
+<b>TP1:</b> {row['TP1']:.4f}  
+<b>TP2:</b> {row['TP2']:.4f}  
 
 <hr>
 
