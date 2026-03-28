@@ -16,7 +16,6 @@ st.set_page_config(
 # =========================
 st.title("🚀 Radar Confluência PRO")
 st.caption("SMC + Multi-Timeframe + Execução Inteligente + Sniper R:R")
-
 st.markdown("---")
 
 # =========================
@@ -24,19 +23,19 @@ st.markdown("---")
 # =========================
 st.subheader("🔧 Seleção de Narrativas e Perfil")
 
-cols = st.columns([1,1,1,1])
+narratives_options = ["AI","RWA","DeFi","L1","L2","Blue Chips","Oraculo"]
 
+# Checkboxes múltiplos em colunas
 narratives = []
-if cols[0].button("AI"): narratives.append("AI")
-if cols[1].button("RWA"): narratives.append("RWA")
-if cols[2].button("DeFi"): narratives.append("DeFi")
-if cols[3].button("L1"): narratives.append("L1")
+cols = st.columns(4)
+for i, option in enumerate(narratives_options):
+    if cols[i % 4].checkbox(option):
+        narratives.append(option)
 
-cols2 = st.columns([1,1,1,1])
-if cols2[0].button("L2"): narratives.append("L2")
-if cols2[1].button("Blue Chips"): narratives.append("Blue Chips")
-if cols2[2].button("Oráculo"): narratives.append("Oraculo")
-if cols2[3].button("Todas"): narratives = ["AI","RWA","DeFi","L1","L2","Blue Chips","Oraculo"]
+# Confere se ao menos uma narrativa foi selecionada
+if not narratives:
+    st.warning("Selecione ao menos uma narrativa para rodar o radar.")
+    st.stop()
 
 risk = st.radio("⚡ Nível de Risco", ["Baixo", "Médio", "Alto"], horizontal=True)
 mode = st.radio("🏹 Modo Radar", ["Sniper", "Intraday", "Swing"], horizontal=True)
@@ -49,6 +48,7 @@ st.markdown("---")
 if st.button("🔍 Rodar Radar"):
 
     with st.spinner("Rodando Radar e analisando ativos..."):
+        # run_radar agora retorna df filtrado + watchlist
         df, watchlist = run_radar(narratives, risk, mode)
 
     # =========================
@@ -61,6 +61,10 @@ if st.button("🔍 Rodar Radar"):
             st.table(watchlist)
     else:
         st.success(f"{len(df)} ativos selecionados para ação imediata.")
+
+        # =========================
+        # AÇÃO IMEDIATA
+        # =========================
         st.subheader("⚡ Ação Imediata")
         for idx, row in df.iterrows():
             color = "#00C853" if row["Sinal"]=="COMPRA" else "#D50000"
