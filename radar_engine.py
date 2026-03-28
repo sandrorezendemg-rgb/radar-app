@@ -1,95 +1,48 @@
 # radar_engine.py
 import pandas as pd
 import requests
-from datetime import datetime
 
-# =========================
-# CONFIGURAÇÕES
-# =========================
-TIMEFRAMES = ["1d", "4h", "1h", "15m", "5m", "1m"]
-MIN_VOLUME = 10000  # volume mínimo para considerar ativo
-
-# =========================
-# FUNÇÕES AUXILIARES
-# =========================
-def get_binance_symbols():
-    """Busca todos os pares USDT ativos na Binance"""
-    url = "https://api.binance.com/api/v3/exchangeInfo"
-    res = requests.get(url, timeout=5).json()
-    symbols = [
-        s['symbol'] for s in res['symbols']
-        if s['quoteAsset'] == 'USDT' and s['status'] == 'TRADING'
-    ]
-    return symbols
-
-def get_ticker(symbol):
-    """Retorna preço atual e volume"""
-    url = f"https://api.binance.com/api/v3/ticker/24hr?symbol={symbol}"
-    try:
-        data = requests.get(url, timeout=5).json()
-        price = float(data.get("lastPrice", 0))
-        volume = float(data.get("quoteVolume", 0))
-        return price, volume
-    except:
-        return None, None
-
-def simulate_smc(price, idx=1):
-    """Gera Entry, SL, TP1 e TP2 diferentes por ativo"""
-    factor = 0.98 + (idx % 5) * 0.005  # pequeno ajuste por ativo
-    sl = round(price * factor, 4)
-    tp1 = round(price * (1 + (idx % 5) * 0.01), 4)
-    tp2 = round(price * (1 + ((idx % 5)+1) * 0.01), 4)
-    entry = round(price, 4)
-    score = max(3, min(10, 5 + (idx % 4)))  # Score entre 3 e 9
-    return entry, sl, tp1, tp2, score
-
-def generate_multi_tf():
-    """Simula sinais multi-timeframe"""
-    return {
-        "1D": "Alta (BOS)",
-        "4H": "OB + FVG",
-        "15M": "Sweep + HL",
-        "1M": "Confirmação"
-    }
-
-# =========================
-# FUNÇÃO PRINCIPAL
-# =========================
 def run_radar(selected_narratives=None, risk="Médio", mode="Sniper"):
     """
-    Executa Radar para teste de múltiplos ativos reais.
-    selected_narratives é ignorado por enquanto.
+    selected_narratives: lista de narrativas escolhidas pelo usuário
+    risk: Baixo, Médio, Alto
+    mode: Sniper, Intraday, Swing
     """
-    symbols = get_binance_symbols()
-    results = []
 
-    for idx, sym in enumerate(symbols):
-        price, volume = get_ticker(sym)
-        if price is None or volume < MIN_VOLUME:
-            continue
+    # Se nenhuma narrativa for selecionada, varrer todas
+    all_narratives = ["AI", "RWA", "DEFI", "L1", "L2", "BLUE CHIPS", "ORACULO"]
+    if not selected_narratives:
+        selected_narratives = all_narratives
 
-        entry, sl, tp1, tp2, score = simulate_smc(price, idx)
-        multi_tf = generate_multi_tf()
+    df_list = []
 
-        results.append({
-            "Ativo": sym,
-            "Entrada": entry,
-            "SL": sl,
-            "TP1": tp1,
-            "TP2": tp2,
-            "Score": score,
-            "Sinal": "COMPRA" if idx % 2 == 0 else "VENDA",
-            "1D": multi_tf["1D"],
-            "4H": multi_tf["4H"],
-            "15M": multi_tf["15M"],
-            "1M": multi_tf["1M"]
-        })
+    # API pública Binance
+    url = "https://api.binance.com/api/v3/ticker/24hr"
+    resp = requests.get(url)
+    tickers = resp.json()  # Lista de dicionários
 
-    df = pd.DataFrame(results)
+    # Filtra apenas pares USDT
+    usdt_tickers = [t for t in tickers if t['symbol'].endswith('USDT')]
 
-    if df.empty:
-        print("Nenhum ativo encontrado com volume suficiente.")
+    # Para cada narrativa, pegar até 10 ativos aleatórios para teste
+    for narrative in selected_narratives:
+        narrative_tickers = usdt_tickers[:10]  # Aqui pode ser refinado por mapeamento de narrativa
+        for t in narrative_tickers:
+            last_price = float(t['lastPrice'])
+            df_list.append({
+                "Ativo": t['symbol'],
+                "Entrada": last_price,
+                "SL": last_price * 0.98,
+                "TP1": last_price * 1.02,
+                "TP2": last_price * 1.05,
+                "Score": 5,  # Simulado
+                "Sinal": "COMPRA",
+                "1D": "-",
+                "4H": "-",
+                "15M": "-",
+                "1M": "-"
+            })
 
-    # Ranking por Score
-    df = df.sort_values(by="Score", ascending=False)
+    df = pd.DataFrame(df_list)
+
     return df
