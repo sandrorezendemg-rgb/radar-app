@@ -3,41 +3,47 @@ import requests
 import time
 
 # =========================
-# CONFIGURAÇÃO
+# CONFIGURAÇÃO API BINANCE
 # =========================
 BASE_URL = "https://api.binance.com/api/v3/klines"
 TICKER_URL = "https://api.binance.com/api/v3/ticker/price"
+
+# =========================
+# MAPA DE NARRATIVAS
+# =========================
+NARRATIVE_MAP = {
+    "AI": ["RNDRUSDT","GALAUSDT","AGIXUSDT"],
+    "RWA": ["PAXGUSDT","TUSDUSDT"],
+    "DeFi": ["UNIUSDT","AAVEUSDT","CAKEUSDT"],
+    "L1": ["ETHUSDT","SOLUSDT","ADAUSDT"],
+    "L2": ["MATICUSDT","OPUSDT","ARBUSDT"],
+    "BLUE CHIPS": ["BTCUSDT","ETHUSDT","BNBUSDT"],
+    "ORACULO": ["LINKUSDT","API3USDT"]
+}
 
 # =========================
 # FUNÇÃO RADAR
 # =========================
 def run_radar(narratives, risk, mode):
     """
-    narratives: lista de narrativas (ex: AI, RWA, DeFi, L1, L2, Blue Chips, Oraculo)
+    narratives: lista de narrativas escolhidas pelo usuário
     risk: "Baixo", "Médio", "Alto"
     mode: "Sniper", "Intraday", "Swing"
     """
-
-    # =========================
-    # PEGAR TODOS OS PARES USDT
-    # =========================
-    response = requests.get(TICKER_URL)
-    all_tickers = response.json()
-    usdt_pairs = [t['symbol'] for t in all_tickers if t['symbol'].endswith("USDT")]
-
     df_list = []
 
     # =========================
-    # FILTRAGEM POR NARRATIVA
+    # Seleciona ativos da narrativa
     # =========================
-    for symbol in usdt_pairs:
-        # Checa se ativo pertence a alguma narrativa
-        if not any(n.upper() in symbol for n in narratives):
-            continue
+    selected_symbols = []
+    for n in narratives:
+        selected_symbols += NARRATIVE_MAP.get(n.upper(), [])
+    selected_symbols = list(set(selected_symbols))  # Remove duplicados
 
-        # =========================
-        # BUSCA DADOS DE 1H
-        # =========================
+    # =========================
+    # BUSCA DADOS DE MERCADO
+    # =========================
+    for symbol in selected_symbols:
         params = {
             "symbol": symbol,
             "interval": "1h",
@@ -45,7 +51,7 @@ def run_radar(narratives, risk, mode):
         }
 
         try:
-            klines = requests.get(BASE_URL, params=params).json()
+            klines = requests.get(BASE_URL, params=params, timeout=5).json()
             if len(klines) == 0:
                 continue
         except:
@@ -54,7 +60,7 @@ def run_radar(narratives, risk, mode):
         close = float(klines[-1][4])
 
         # =========================
-        # CÁLCULO DE ENTRADA, SL E TP
+        # CÁLCULO ENTRADA / SL / TP
         # =========================
         rr_map = {"Baixo": 1.5, "Médio": 2, "Alto": 3}
         rr = rr_map.get(risk, 2)
@@ -64,7 +70,8 @@ def run_radar(narratives, risk, mode):
         tp1 = round(entry + (entry - sl) * rr * 0.5, 4)
         tp2 = round(entry + (entry - sl) * rr, 4)
 
-        score = 5  # score inicial
+        # Score inicial simplificado
+        score = 5
 
         df_list.append({
             "Ativo": symbol,
@@ -80,13 +87,20 @@ def run_radar(narratives, risk, mode):
             "1M": "-"
         })
 
-        # Delay pequeno para não sobrecarregar
-        time.sleep(0.05)
+        time.sleep(0.05)  # Delay pequeno para API
 
     df = pd.DataFrame(df_list)
 
-    # Ranking por score
+    # =========================
+    # Ranking por Score
+    # =========================
     if not df.empty:
         df = df.sort_values(by="Score", ascending=False)
+
+    # =========================
+    # Mensagem caso não encontre ativos
+    # =========================
+    if df.empty:
+        print("Nenhum ativo encontrado para as narrativas selecionadas.")
 
     return df
