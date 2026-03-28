@@ -11,12 +11,12 @@ MIN_VOLUME = 10000  # volume mínimo para considerar ativo
 
 # Narratives dinâmicas (exemplo: categorização inicial)
 NARRATIVE_KEYWORDS = {
-    "AI": ["RNDR", "AGIX", "AIDOGE"],
+    "AI": ["TAO", "AGIX", "RNDR"],
     "RWA": ["PAXG", "TUSD"],
     "DEFI": ["UNI", "AAVE", "SUSHI"],
     "L1": ["ETH", "SOL", "ADA"],
     "L2": ["MATIC", "OP"],
-    "BLUE CHIPS": ["BTC", "BNB"],
+    "BLUE CHIPS": ["BTC", "XRP"],
     "ORACULO": ["LINK", "API3"]
 }
 
